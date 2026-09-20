@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>新浪财经历史分红数据分析</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="page-title" aria-labelledby="dashboard-title">
+        <div>
+          <p class="eyebrow">Sina Finance Dividend Dataset</p>
+          <h1 id="dashboard-title">新浪财经历史分红数据分析首页</h1>
+        </div>
+        <div class="title-meta">
+          <span id="sourceStatus">示例数据已加载</span>
+          <span id="lastUpdated">本地预处理结果</span>
+        </div>
+      </section>
+
+      <section class="workspace-grid">
+        <aside class="upload-panel" aria-labelledby="upload-title">
+          <div class="section-heading">
+            <h2 id="upload-title">数据上传</h2>
+            <span>CSV / JSON</span>
+          </div>
+          <label class="drop-zone" for="fileInput" id="dropZone">
+            <input id="fileInput" type="file" accept=".csv,.json,text/csv,application/json" />
+            <span class="upload-icon" aria-hidden="true">↑</span>
+            <strong>选择或拖入分红数据文件</strong>
+            <small>支持字段：date、stock_code、stock_name、dividend_per_share、total_dividend、plan，也兼容常见中文表头。</small>
+          </label>
+          <div class="upload-actions">
+            <button type="button" id="loadSampleButton">载入示例</button>
+            <button type="button" id="clearButton" class="ghost-button">清空</button>
+          </div>
+          <p class="status-line" id="message" role="status" aria-live="polite">已载入示例分红数据，可直接查看统计结果。</p>
+        </aside>
+
+        <section class="stats-panel" aria-labelledby="stats-title">
+          <div class="section-heading">
+            <h2 id="stats-title">基础统计指标</h2>
+            <span id="validRowsLabel">10 条有效记录</span>
+          </div>
+          <div class="metric-grid">
+            <article class="metric-card">
+              <span>记录数量</span>
+              <strong id="countMetric">10</strong>
+              <small>有效分红记录</small>
+            </article>
+            <article class="metric-card">
+              <span>均值</span>
+              <strong id="meanMetric">¥14.95</strong>
+              <small>每股分红金额</small>
+            </article>
+            <article class="metric-card">
+              <span>极大值</span>
+              <strong id="maxMetric">¥30.88</strong>
+              <small id="maxLabel">2024 贵州茅台</small>
+            </article>
+            <article class="metric-card">
+              <span>极小值</span>
+              <strong id="minMetric">¥1.50</strong>
+              <small id="minLabel">2024 中国平安</small>
+            </article>
+          </div>
+        </section>
+      </section>
+
+      <section class="content-grid">
+        <section class="chart-panel" aria-labelledby="chart-title">
+          <div class="section-heading">
+            <h2 id="chart-title">分红趋势</h2>
+            <span>按年度均值聚合</span>
+          </div>
+          <div id="chartContainer" class="chart-container">
+            <svg id="trendChart" role="img" aria-labelledby="trendChartTitle trendChartDesc"></svg>
+            <p id="emptyChart" class="empty-state" hidden>暂无可绘制的分红趋势数据。</p>
+          </div>
+        </section>
+
+        <section class="table-panel" aria-labelledby="table-title">
+          <div class="section-heading">
+            <h2 id="table-title">数据预览</h2>
+            <span id="tableCaption">前 10 条记录</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>日期</th>
+                  <th>股票代码</th>
+                  <th>股票名称</th>
+                  <th>每股分红</th>
+                  <th>总分红</th>
+                  <th>方案摘要</th>
+                </tr>
+              </thead>
+              <tbody id="dataBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </main>
+    <script src="./app.js"></script>
+  </body>
+</html>
