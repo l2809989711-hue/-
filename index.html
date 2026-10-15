@@ -2,107 +2,272 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>新浪财经历史分红数据分析</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      name="description"
+      content="比亚迪 2023 年后复权历史行情移动端数据看板，包含趋势、成交量、统计指标和数据质量检查。"
+    />
+    <title>比亚迪后复权历史行情数据看板</title>
+    <link rel="stylesheet" href="./vendor/tdesign.min.css" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <main class="app-shell">
-      <section class="page-title" aria-labelledby="dashboard-title">
-        <div>
-          <p class="eyebrow">Sina Finance Dividend Dataset</p>
-          <h1 id="dashboard-title">新浪财经历史分红数据分析首页</h1>
-        </div>
-        <div class="title-meta">
-          <span id="sourceStatus">示例数据已加载</span>
-          <span id="lastUpdated">本地预处理结果</span>
-        </div>
-      </section>
+    <div id="app" v-cloak>
+      <div class="phone-shell">
+        <t-navbar
+          class="app-navbar"
+          :fixed="false"
+          title="比亚迪 · 行情"
+          :animation="false"
+        >
+          <template #left>
+            <span class="brand-mark" aria-label="比亚迪股票数据">BYD</span>
+          </template>
+          <template #right>
+            <t-icon name="chart-line" size="22px" aria-label="行情图表"></t-icon>
+          </template>
+        </t-navbar>
 
-      <section class="workspace-grid">
-        <aside class="upload-panel" aria-labelledby="upload-title">
-          <div class="section-heading">
-            <h2 id="upload-title">数据上传</h2>
-            <span>CSV / JSON</span>
-          </div>
-          <label class="drop-zone" for="fileInput" id="dropZone">
-            <input id="fileInput" type="file" accept=".csv,.json,text/csv,application/json" />
-            <span class="upload-icon" aria-hidden="true">↑</span>
-            <strong>选择或拖入分红数据文件</strong>
-            <small>支持字段：date、stock_code、stock_name、dividend_per_share、total_dividend、plan，也兼容常见中文表头。</small>
-          </label>
-          <div class="upload-actions">
-            <button type="button" id="loadSampleButton">载入示例</button>
-            <button type="button" id="clearButton" class="ghost-button">清空</button>
-          </div>
-          <p class="status-line" id="message" role="status" aria-live="polite">已载入示例分红数据，可直接查看统计结果。</p>
-        </aside>
+        <main class="page-content">
+          <section class="hero" aria-labelledby="stock-title">
+            <div class="hero-heading">
+              <div>
+                <p class="eyebrow">2023 · 深交所 · 后复权</p>
+                <h1 id="stock-title">
+                  比亚迪
+                  <span>{{ meta.stockCode }}</span>
+                </h1>
+              </div>
+              <t-tag
+                :theme="lastRow.changePct >= 0 ? 'danger' : 'success'"
+                variant="light"
+                size="large"
+              >
+                {{ lastRow.changePct >= 0 ? "上涨" : "下跌" }}
+              </t-tag>
+            </div>
 
-        <section class="stats-panel" aria-labelledby="stats-title">
-          <div class="section-heading">
-            <h2 id="stats-title">基础统计指标</h2>
-            <span id="validRowsLabel">10 条有效记录</span>
-          </div>
-          <div class="metric-grid">
-            <article class="metric-card">
-              <span>记录数量</span>
-              <strong id="countMetric">10</strong>
-              <small>有效分红记录</small>
-            </article>
-            <article class="metric-card">
-              <span>均值</span>
-              <strong id="meanMetric">¥14.95</strong>
-              <small>每股分红金额</small>
-            </article>
-            <article class="metric-card">
-              <span>极大值</span>
-              <strong id="maxMetric">¥30.88</strong>
-              <small id="maxLabel">2024 贵州茅台</small>
-            </article>
-            <article class="metric-card">
-              <span>极小值</span>
-              <strong id="minMetric">¥1.50</strong>
-              <small id="minLabel">2024 中国平安</small>
-            </article>
-          </div>
-        </section>
-      </section>
+            <div class="hero-price" aria-label="最新收盘价">
+              <span class="currency">¥</span>
+              <strong>{{ formatPrice(lastRow.close) }}</strong>
+              <span
+                class="daily-change"
+                :class="lastRow.changePct >= 0 ? 'is-up' : 'is-down'"
+              >
+                {{ signed(lastRow.change) }}
+                / {{ signed(lastRow.changePct) }}%
+              </span>
+            </div>
+            <p class="as-of">
+              {{ lastRow.date }} 收盘 · 较年初
+              <strong>{{ signed(stats.periodReturnPct) }}%</strong>
+            </p>
 
-      <section class="content-grid">
-        <section class="chart-panel" aria-labelledby="chart-title">
-          <div class="section-heading">
-            <h2 id="chart-title">分红趋势</h2>
-            <span>按年度均值聚合</span>
-          </div>
-          <div id="chartContainer" class="chart-container">
-            <svg id="trendChart" role="img" aria-labelledby="trendChartTitle trendChartDesc"></svg>
-            <p id="emptyChart" class="empty-state" hidden>暂无可绘制的分红趋势数据。</p>
-          </div>
-        </section>
+            <dl class="hero-facts">
+              <div>
+                <dt>交易日</dt>
+                <dd>{{ stats.recordCount }}</dd>
+              </div>
+              <div>
+                <dt>年度高点</dt>
+                <dd>¥{{ formatPrice(stats.highMax) }}</dd>
+              </div>
+              <div>
+                <dt>年度低点</dt>
+                <dd>¥{{ formatPrice(stats.lowMin) }}</dd>
+              </div>
+            </dl>
+          </section>
 
-        <section class="table-panel" aria-labelledby="table-title">
-          <div class="section-heading">
-            <h2 id="table-title">数据预览</h2>
-            <span id="tableCaption">前 10 条记录</span>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>日期</th>
-                  <th>股票代码</th>
-                  <th>股票名称</th>
-                  <th>每股分红</th>
-                  <th>总分红</th>
-                  <th>方案摘要</th>
-                </tr>
-              </thead>
-              <tbody id="dataBody"></tbody>
-            </table>
-          </div>
-        </section>
-      </section>
-    </main>
+          <section class="range-section" aria-labelledby="range-title">
+            <div class="section-heading">
+              <div>
+                <p class="section-kicker">VIEW RANGE</p>
+                <h2 id="range-title">观察区间</h2>
+              </div>
+              <span>{{ visibleRows.length }} 个交易日</span>
+            </div>
+            <t-segmented
+              v-model="rangeKey"
+              :options="rangeOptions"
+              block
+              aria-label="选择观察区间"
+            ></t-segmented>
+          </section>
+
+          <section class="chart-panel" aria-labelledby="chart-title">
+            <div class="section-heading">
+              <div>
+                <p class="section-kicker">TREND</p>
+                <h2 id="chart-title">{{ chartMode === "price" ? "价格趋势" : "成交量" }}</h2>
+              </div>
+              <t-tag theme="primary" variant="light">{{ rangeLabel }}</t-tag>
+            </div>
+
+            <t-segmented
+              v-model="chartMode"
+              class="chart-switch"
+              :options="chartModeOptions"
+              block
+              aria-label="切换图表指标"
+            ></t-segmented>
+
+            <div
+              class="chart-wrap"
+              :data-visible-count="visibleRows.length"
+              :data-chart-mode="chartMode"
+            >
+              <canvas
+                id="marketChart"
+                ref="chartCanvas"
+                role="img"
+                :aria-label="chartAriaLabel"
+              ></canvas>
+            </div>
+
+            <div class="chart-caption" role="status">
+              <span>{{ chartCaption }}</span>
+              <span v-if="chartMode === 'price'">
+                区间振幅 {{ formatPercent(rangeStats.amplitudeMeanPct) }}
+              </span>
+              <span v-else>
+                日均 {{ formatVolume(rangeStats.volumeMean) }}
+              </span>
+            </div>
+          </section>
+
+          <section class="metric-section" aria-labelledby="metric-title">
+            <div class="section-heading">
+              <div>
+                <p class="section-kicker">DESCRIPTIVE STATS</p>
+                <h2 id="metric-title">区间统计</h2>
+              </div>
+              <span>按筛选结果计算</span>
+            </div>
+            <div class="metric-grid">
+              <article v-for="metric in rangeMetrics" :key="metric.label" class="metric-card">
+                <div class="metric-icon" aria-hidden="true">
+                  <t-icon :name="metric.icon" size="20px"></t-icon>
+                </div>
+                <span>{{ metric.label }}</span>
+                <strong>{{ metric.value }}</strong>
+                <small>{{ metric.note }}</small>
+              </article>
+            </div>
+          </section>
+
+          <section class="progress-panel" aria-labelledby="position-title">
+            <div class="section-heading compact">
+              <div>
+                <p class="section-kicker">MARKET POSITION</p>
+                <h2 id="position-title">年度位置与分布</h2>
+              </div>
+            </div>
+
+            <div class="progress-row">
+              <div>
+                <strong>收盘价在年度区间中的位置</strong>
+                <span>低点 ¥{{ formatPrice(stats.lowMin) }} / 高点 ¥{{ formatPrice(stats.highMax) }}</span>
+              </div>
+              <b>{{ positionPct.toFixed(1) }}%</b>
+            </div>
+            <t-progress
+              :percentage="positionPct"
+              theme="plump"
+              :label="false"
+              :stroke-width="10"
+              color="#1E40AF"
+            ></t-progress>
+
+            <div class="progress-row distribution-row">
+              <div>
+                <strong>上涨日占比</strong>
+                <span>{{ stats.upDays }} 个上涨 / {{ stats.downDays }} 个下跌</span>
+              </div>
+              <b>{{ upDayRatio.toFixed(1) }}%</b>
+            </div>
+            <t-progress
+              :percentage="upDayRatio"
+              theme="plump"
+              :label="false"
+              :stroke-width="10"
+              color="#D97706"
+            ></t-progress>
+          </section>
+
+          <section class="records-section" aria-labelledby="records-title">
+            <div class="section-heading">
+              <div>
+                <p class="section-kicker">RECENT RECORDS</p>
+                <h2 id="records-title">最近行情</h2>
+              </div>
+              <span>单位：元 / 手</span>
+            </div>
+
+            <t-cell-group theme="card">
+              <t-cell
+                v-for="row in displayedRows"
+                :key="row.date"
+                :title="row.date"
+                :note="'¥' + formatPrice(row.close)"
+                :description="`${signed(row.change)} / ${signed(row.changePct)}% · 成交 ${formatVolume(row.volume)}`"
+              >
+                <template #right-icon>
+                  <span
+                    class="change-marker"
+                    :class="row.changePct >= 0 ? 'is-up' : 'is-down'"
+                    :aria-label="row.changePct >= 0 ? '上涨' : '下跌'"
+                  >
+                    {{ row.changePct >= 0 ? "▲" : "▼" }}
+                  </span>
+                </template>
+              </t-cell>
+            </t-cell-group>
+
+            <t-button
+              class="show-more"
+              block
+              theme="primary"
+              variant="outline"
+              size="large"
+              @click="showAllRows = !showAllRows"
+            >
+              {{ showAllRows ? "收起明细" : "展开最近 20 个交易日" }}
+            </t-button>
+          </section>
+
+          <section class="quality-panel" aria-labelledby="quality-title">
+            <div class="section-heading compact">
+              <div>
+                <p class="section-kicker">DATA QUALITY</p>
+                <h2 id="quality-title">数据质量检查</h2>
+              </div>
+              <t-tag theme="success" variant="light">通过</t-tag>
+            </div>
+            <t-cell-group>
+              <t-cell title="有效记录" :note="`${stats.recordCount} / ${stats.recordCount}`" bordered></t-cell>
+              <t-cell title="字段完整性" note="11 / 11" bordered></t-cell>
+              <t-cell title="重复交易日" note="0" bordered></t-cell>
+              <t-cell title="缺失关键值" note="0" :bordered="false"></t-cell>
+            </t-cell-group>
+            <p class="source-note">
+              数据源：{{ meta.sourceFile }}。页面数值由
+              <code>scripts/build_data.py</code> 自动复核生成。
+            </p>
+          </section>
+        </main>
+
+        <footer class="app-footer">
+          <span>BYD · 2023 AFTER-ADJUSTED MARKET DATA</span>
+          <span>仅供课程数据分析展示，不构成投资建议</span>
+        </footer>
+      </div>
+    </div>
+
+    <script src="./vendor/vue.global.prod.js"></script>
+    <script src="./vendor/tdesign.min.js"></script>
+    <script src="./vendor/chart.umd.min.js"></script>
+    <script src="./data/byd_2023.js"></script>
     <script src="./app.js"></script>
   </body>
 </html>

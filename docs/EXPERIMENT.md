@@ -1,154 +1,183 @@
-# 实验文档：新浪财经历史分红数据分析展示网页
+# 实验文档：比亚迪后复权历史行情移动端数据看板
 
 ## 1. 实验目标
 
-本实验完成一个“数据分析展示网页”，用于展示新浪财经历史分红数据获取与预处理后的结果。页面重点覆盖数据上传、数据预览、基础统计指标和分红趋势可视化，服务于金融数据获取及预处理课程作业。
+本实验读取比亚迪 2023 年后复权历史行情 Excel，完成数据校验、描述性统计、
+移动端可视化和自动化测试。最终页面是一个可直接打开的静态 HTML 看板，适合
+在手机或浏览器的移动设备模式下截图和展示。
 
-## 2. 项目任务拆解
+页面重点回答以下问题：
 
-1. 数据输入层：提供 CSV / JSON 文件上传入口，并保留示例分红数据用于快速演示。
-2. 数据预处理层：统一字段名，兼容 `date`、`stock_code`、`stock_name`、`dividend_per_share` 等英文表头，以及“股票代码”“股票名称”“每股分红”“总分红”等中文表头。
-3. 统计分析层：计算有效记录数量、每股分红均值、极大值和极小值。
-4. 可视化层：按年份聚合每股分红均值，绘制简单折线趋势图。
-5. 测试验证层：使用 Playwright 测试页面初始渲染、文件上传解析、统计结果和空状态。
-6. 项目管理层：补充 README、实验文档和 Git 管理说明，保证提交材料结构完整。
+1. 比亚迪 2023 年后复权收盘价整体如何变化？
+2. 年度高点、低点、均值、波动率与成交活跃度分别是多少？
+3. 不同观察区间下，价格趋势和成交量如何变化？
+4. 原始数据是否完整、日期是否唯一、关键字段是否存在缺失？
 
-## 3. 前端实现说明
+## 2. 数据说明
 
-项目采用原生 HTML、CSS、JavaScript 实现，不依赖后端服务。
+数据文件：
 
-- `index.html`：页面结构，包括上传区、统计卡片、图表区和表格区。
-- `styles.css`：浅色、简洁、学术风格样式。
-- `app.js`：完成文件解析、字段标准化、统计计算、表格渲染和 SVG 折线图绘制。
-- `data/sample-dividends.csv`：实验示例数据。
-
-数据格式建议：
-
-```csv
-date,stock_code,stock_name,dividend_per_share,total_dividend,plan
-2024-06-27,600519,贵州茅台,30.8760,387.87,每10股派308.76元
+```text
+data/source/比亚迪后复权历史行情数据.xlsx
 ```
 
-## 4. Playwright 网页测试
+工作表：`Sheet2`
 
-测试文件位于 `tests/dashboard.spec.js`，覆盖：
+字段：
 
-- 首页标题、指标卡、表格和图表是否正常展示。
-- 上传 `data/sample-dividends.csv` 后是否重新计算统计指标。
-- 点击“清空”后是否展示空表格和空图表状态。
+| 字段 | 含义 | 单位 |
+| --- | --- | --- |
+| 日期 | 交易日 | 日期 |
+| 开盘 | 后复权开盘价 | 元 |
+| 收盘 | 后复权收盘价 | 元 |
+| 最高 | 当日最高价 | 元 |
+| 最低 | 当日最低价 | 元 |
+| 成交量 | 当日成交量 | 手 |
+| 成交额 | 当日成交额 | 元 |
+| 振幅 | 当日振幅 | % |
+| 涨跌幅 | 较前一交易日涨跌幅 | % |
+| 涨跌额 | 较前一交易日涨跌额 | 元 |
+| 换手率 | 当日换手率 | % |
 
-运行步骤：
+数据校验结果：
 
-```bash
+- 日期范围：2023-01-03 至 2023-12-29
+- 有效交易日：242 条
+- 字段数量：11 个
+- 日期重复：0
+- 关键字段空值：0
+
+## 3. 数据预处理与统计口径
+
+`scripts/build_data.py` 使用 `openpyxl` 显式读取第一行表头和后续记录，
+执行序列完整性、字段类型、数值范围和日期唯一性检查，然后生成
+`data/byd_2023.js`。
+
+主要统计公式：
+
+```text
+区间收益率 = (区间末收盘价 / 区间首收盘价 - 1) × 100%
+收盘均值 = Σ 收盘价 / 交易日数量
+收盘中位数 = 排序后位于中间位置的收盘价
+收盘标准差 = 样本标准差(收盘价)
+年化波动率 = 样本标准差(日涨跌幅) × sqrt(242)
+日均成交量 = Σ 成交量 / 交易日数量
+年化低位位置 = (最新收盘价 - 年度最低价) / (年度最高价 - 年度最低价) × 100%
+```
+
+年化波动率是探索性指标，不是对后续收益的预测。
+
+## 4. 技术选型
+
+| 层级 | 技术 | 选择理由 |
+| --- | --- | --- |
+| 页面框架 | Vue 3.5.22 global build | 无需构建即可运行静态页面 |
+| 移动端控件 | TDesign Mobile Vue 1.16.2 | 提供 Navbar、Segmented、Cell、Tag、Progress、Button、Icon 等一致控件 |
+| 图表 | Chart.js 4.4.7 | 支持响应式折线图、柱状图、Tooltip 和无障碍描述 |
+| 数据构建 | Python + openpyxl | 能精确读取工作簿并执行严格校验 |
+| 自动化测试 | Playwright | 支持移动端视口、控件交互和运行时错误检测 |
+| 设计流程 | UI UX Pro Max | 生成金融分析设计系统、配色、字体、图表与交付前检查规则 |
+
+所有浏览器依赖均存放在 `vendor/`，页面不依赖运行时网络请求。
+
+## 5. UI/UX 设计过程
+
+先使用 UI UX Pro Max 生成并持久化设计系统：
+
+```text
+design-system/byd-stock-analytics/MASTER.md
+design-system/byd-stock-analytics/pages/dashboard.md
+```
+
+设计结论：
+
+- 风格：Minimalism & Swiss Style，强调稳定网格、留白和清晰层级。
+- 配色：蓝色主数据色、琥珀色重点色、红色与青色表达涨跌，并提供文字标签。
+- 字体：数字和代码使用 Fira Code 风格，正文使用 Fira Sans 与中文无衬线回退。
+- 动效：仅保留约 200 至 300ms 的图表更新和状态反馈，并支持减少动效。
+- 交互：观察区间和图表指标均可切换，最近行情可展开，避免静态长表。
+- 无障碍：图表提供 `aria-label`，按钮有可读文字，焦点状态可见，颜色不是唯一语义。
+
+页面采用 430px 最大移动内容宽度；375px 下自动收紧边距，不产生横向滚动。
+
+## 6. TDesign MCP 使用过程
+
+项目使用官方 `tdesign-mcp-server 0.2.4`，通过 MCP 查询：
+
+- 组件列表：`mobile-vue`
+- 组件文档：Navbar、Cell、Segmented、Tabs、Tag、Button、Progress、Table、Grid、Icon
+- 图标检索：`chart-line-data`、`arrow-up`、`arrow-down`、`data`
+
+最终页面使用 Navbar、Icon、Tag、Segmented、Progress、CellGroup、Cell 和
+Button。组件属性和插槽均以 MCP 返回的官方文档为准。
+
+完整查询说明见 `docs/TDESIGN_MCP.md`。
+
+## 7. 页面功能
+
+1. 顶部展示最新收盘价、日涨跌幅和年度收益率。
+2. 使用 TDesign Segmented 选择近 1 月、3 月、6 月和全年。
+3. 图表可在价格趋势与成交量之间切换。
+4. 统计卡片随观察区间重新计算均值、最高、最低和日均成交量。
+5. TDesign Progress 展示收盘价年度位置和上涨日占比。
+6. TDesign Cell 列表展示最近 6 或 20 个交易日。
+7. 数据质量区展示记录数、字段完整性、重复日期和缺失值检查。
+
+## 8. Playwright 测试
+
+测试文件：
+
+```text
+tests/dashboard.spec.js
+```
+
+覆盖内容：
+
+- 页面标题、最新收盘价、年度交易日和指标卡正常渲染。
+- TDesign Segmented、Progress 等控件正常挂载。
+- 切换“近 1 月”后，图表可见记录数变为 20。
+- 切换“成交量”后，图表模式和可访问标签同步变化。
+- 展开最近行情后，记录数从 6 变为 20。
+- 页面运行时无 JavaScript 异常。
+
+运行命令：
+
+```powershell
 npm install
 npx playwright install chromium
 npm test
 ```
 
-## 5. 火山方舟 API 接入说明
+## 9. 截图建议
 
-本项目当前前端页面为本地数据展示，不直接调用大模型 API。若后续需要接入火山方舟，用于生成数据解读、自动撰写分析结论或辅助代码解释，可按下面流程接入。
+按用户要求，本次不代做网页截图。建议在浏览器开发者工具中使用
+`390 × 844` 视口，分别截取：
 
-参考官方资料：
+1. 页面顶部与价格趋势图。
+2. 区间统计和年度位置。
+3. 成交量视图与最近行情。
 
-- 火山方舟产品页提供“获取 API KEY”和“进入火山方舟”入口，并说明火山方舟是一站式大模型服务平台：https://www.volcengine.com/
-- 火山方舟快速入门文档说明需要先获取并配置 API Key，再开通模型服务：https://www.volcengine.com/docs/82379/1399008
-- 火山方舟 OpenAI SDK 兼容说明：https://www.volcengine.com/docs/82379/1330626
-- 火山方舟 Base URL 及鉴权说明：https://www.volcengine.com/docs/82379/1298459
-- 火山方舟 Chat API 说明：https://www.volcengine.com/docs/82379/1112500
+页面在 `file://` 和 GitHub Pages 两种方式下均可直接加载。
 
-### 5.1 获取 API Key
+## 10. Git 管理
 
-1. 登录火山引擎控制台。
-2. 进入火山方舟。
-3. 在控制台左下角选择 API Key 管理。
-4. 创建 API Key，并复制保存。
-5. 不要把真实 API Key 写入前端代码、Git 仓库或公开文档。
+原有分红分析保存在 `legacy/dividend-dashboard/`，本次页面位于仓库根目录，
+因此历史成果和当前 issue 交付互不覆盖。
 
-### 5.2 开通模型服务
+建议提交信息：
 
-1. 进入火山方舟“开通管理”或模型服务页面。
-2. 选择需要使用的模型，例如豆包系列模型或课程要求指定模型。
-3. 确认计费、配额和服务状态。
-4. 记录模型 ID 或推理接入点 ID，实际名称以控制台显示为准。
-
-### 5.3 Python 接入示例
-
-建议使用环境变量保存 Token：
-
-```powershell
-$env:ARK_API_KEY="你的火山方舟 API Key"
+```text
+feat: build BYD mobile stock analytics dashboard
+docs: add sanitized agent interaction log
+test: cover range filters and chart modes
 ```
 
-Python 示例：
+## 11. Agent 与大模型信息
 
-```python
-import os
-from openai import OpenAI
+- Agent 软件：Codex Desktop
+- 大模型：`deepseek-v4-flash`
+- 设计辅助 Skill：`ui-ux-pro-max`
+- 控件知识工具：TDesign MCP Server `0.2.4`
+- 自动化浏览器：Playwright + Chromium
 
-client = OpenAI(
-    api_key=os.environ["ARK_API_KEY"],
-    base_url="https://ark.cn-beijing.volces.com/api/v3",
-)
-
-response = client.chat.completions.create(
-    model="你的模型或推理接入点 ID",
-    messages=[
-        {"role": "system", "content": "你是金融数据分析助手。"},
-        {"role": "user", "content": "请解释上市公司分红均值趋势。"},
-    ],
-)
-
-print(response.choices[0].message.content)
-```
-
-### 5.4 Token 使用步骤与注意事项
-
-1. 创建 API Key 后仅在本机环境变量或后端密钥管理系统中保存。
-2. 调用 API 时通过 `Authorization` 或 SDK 的 `api_key` 参数传入。
-3. 统计 Token 使用量时，关注控制台账单、模型调用日志或响应中的 usage 字段。
-4. 开发阶段设置较小的输入数据和较短输出长度，避免不必要消耗。
-5. 若 Key 泄露，立即在控制台禁用或删除旧 Key，并重新创建。
-6. 前端页面如需调用模型，必须通过后端代理，不能在浏览器暴露 Token。
-
-## 6. Git 项目管理说明
-
-建议从 `dividend-dashboard` 目录初始化 Git：
-
-```bash
-git init
-git add .
-git commit -m "init dividend dashboard experiment"
-```
-
-常用分支策略：
-
-```bash
-git checkout -b feature/dashboard-ui
-git add index.html styles.css app.js
-git commit -m "feat: build dividend dashboard ui"
-
-git checkout -b test/playwright
-git add tests playwright.config.js package.json
-git commit -m "test: add playwright dashboard tests"
-```
-
-提交前检查：
-
-```bash
-git status
-npm test
-```
-
-建议 `.gitignore` 内容：
-
-```gitignore
-node_modules/
-playwright-report/
-test-results/
-.env
-```
-
-## 7. 实验总结
-
-本项目完成了从分红数据上传、字段统一、统计指标计算到趋势图展示的前端闭环，并通过 Playwright 自动化测试验证核心交互。后续可以扩展为从新浪财经接口或已爬取文件自动导入数据，并接入火山方舟生成自然语言分析报告。
+完整脱敏交互过程见 `docs/AGENT_INTERACTION_LOG.md`。

@@ -1,11 +1,12 @@
 {
-  "name": "sina-dividend-dashboard",
+  "name": "byd-stock-analytics",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "playwright test",
-    "test:headed": "playwright test --headed"
+    "test:headed": "playwright test --headed",
+    "data:build": "python scripts/build_data.py"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0"
